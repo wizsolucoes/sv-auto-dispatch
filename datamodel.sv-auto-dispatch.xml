@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="utf-8"?>
+<itop_design xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.0">
+	<classes>
+		<class id="DispatchRule" _delta="define">
+			<parent>cmdbAbstractObject</parent>
+			<properties>
+				<category>bizmodel,searchable,requestmgmt</category>
+				<abstract>false</abstract>
+				<key_type>autoincrement</key_type>
+				<db_table>dispatchrule</db_table>
+				<naming>
+					<attributes>
+						<attribute id="name"/>
+					</attributes>
+				</naming>
+				<icon>images/dispatchrule.png</icon>
+				<reconciliation>
+					<attributes>
+						<attribute id="name"/>
+						<attribute id="org_id"/>
+						<attribute id="org_name"/>
+					</attributes>
+				</reconciliation>
+			</properties>
+			<fields>
+				<field id="name" xsi:type="AttributeString">
+					<sql>name</sql>
+					<default_value/>
+					<is_null_allowed>false</is_null_allowed>
+				</field>
+				<field id="org_id" xsi:type="AttributeExternalKey">
+					<sql>org_id</sql>
+					<target_class>Organization</target_class>
+					<is_null_allowed>false</is_null_allowed>
+					<on_target_delete>DEL_MANUAL</on_target_delete>
+				</field>
+				<field id="org_name" xsi:type="AttributeExternalField">
+					<extkey_attcode>org_id</extkey_attcode>
+					<target_attcode>name</target_attcode>
+				</field>
+				<field id="team_id" xsi:type="AttributeExternalKey" _delta="define">
+					<sql>team_id</sql>
+					<target_class>Team</target_class>
+					<filter>SELECT Team AS T
+						JOIN lnkDeliveryModelToContact AS L1 ON L1.contact_id = T.id
+						JOIN DeliveryModel AS DM ON L1.deliverymodel_id = DM.id
+						WHERE DM.org_id = :this->org_id</filter>
+					<dependencies>
+						<attribute id="org_id"/>
+					</dependencies>
+					<is_null_allowed>false</is_null_allowed>
+					<on_target_delete>DEL_MANUAL</on_target_delete>
+				</field>
+				<field id="team_name" xsi:type="AttributeExternalField">
+					<extkey_attcode>team_id</extkey_attcode>
+					<target_attcode>name</target_attcode>
+				</field>
+				<field id="timeout" xsi:type="AttributeDuration">
+					<sql>timeout</sql>
+					<default_value/>
+					<is_null_allowed>false</is_null_allowed>
+				</field>
+			</fields>
+			<methods/>
+			<presentation>
+				<details>
+					<items>
+						<item id="name">
+							<rank>10</rank>
+						</item>
+						<item id="org_id">
+							<rank>20</rank>
+						</item>
+						<item id="team_id">
+							<rank>30</rank>
+						</item>
+						<item id="timeout">
+							<rank>40</rank>
+						</item>
+					</items>
+				</details>
+				<list>
+					<items>
+						<item id="org_id">
+							<rank>10</rank>
+						</item>
+						<item id="team_id">
+							<rank>20</rank>
+						</item>
+						<item id="timeout">
+							<rank>30</rank>
+						</item>
+					</items>
+				</list>
+			</presentation>
+		</class>
+		<class id="lnkCustomerContractToService" _created_in="itop-service-mgmt" _delta="must_exist">
+			<fields>
+				<field id="dispatch_id" xsi:type="AttributeExternalKey" _delta="define">
+					<sql>dispatch_id</sql>
+					<target_class>DispatchRule</target_class>
+					<filter>SELECT DispatchRule AS DR
+						JOIN Organization AS O ON DR.org_id = O.id
+						JOIN CustomerContract AS CC ON CC.provider_id = O.id
+						WHERE CC.id = :this->customercontract_id</filter>
+					<dependencies>
+						<attribute id="customercontract_id"/>
+					</dependencies>
+					<is_null_allowed>true</is_null_allowed>
+					<on_target_delete>DEL_MANUAL</on_target_delete>
+				</field>
+				<field id="dispatch_name" xsi:type="AttributeExternalField" _delta="define">
+					<extkey_attcode>dispatch_id</extkey_attcode>
+					<target_attcode>name</target_attcode>
+				</field>
+			</fields>
+			<presentation>
+				<details>
+					<items>
+						<item id="dispatch_id" _delta="define">
+							<rank>40</rank>
+						</item>
+					</items>
+				</details>
+				<list>
+					<items>
+						<item id="dispatch_id" _delta="define">
+							<rank>40</rank>
+						</item>
+					</items>
+				</list>
+			</presentation>
+		</class>
+		<class id="Incident" _created_in="itop-incident-mgmt" _delta="if_exists">
+			<fields>
+				<field id="dispatch_timeout" xsi:type="AttributeStopWatch" _delta="define">
+					<states>
+						<state id="new"/>
+					</states>
+					<goal>AutoDispatchTicket</goal>
+					<thresholds>
+						<threshold id="100">
+							<actions>
+								<action>
+									<verb>DispatchToTeam</verb>
+									<params/>
+								</action>
+								<action>
+									<verb>ApplyStimulus</verb>
+									<params>
+										<param>ev_dispatch</param>
+									</params>
+								</action>
+							</actions>
+						</threshold>
+					</thresholds>
+				</field>
+			</fields>
+			<methods>
+				<method id="DispatchToTeam" _delta="define">
+					<comment><![CDATA[/**
+	 * Dispatch Ticket to a Team
+	 */]]></comment>
+					<static>false</static>
+					<access>public</access>
+					<type>Custom</type>
+					<code><![CDATA[	public function DispatchToTeam()
+	{
+		$oTeamSet = new DBObjectSet( DBObjectSearch::FromOQL_AllData("SELECT Team AS T
+JOIN DispatchRule AS DR ON DR.team_id = T.id
+JOIN lnkCustomerContractToService AS L1 ON L1.dispatch_id = DR.id
+WHERE L1.service_id = :this->service_id"), [], ['this' => $this], null, 1);
+		$oTeam = $oTeamSet->Fetch();
+
+		// Set Team and dispatch
+		if ($oTeam)
+		{
+			$this->Set('team_id', $oTeam);
+			$this->ApplyStimulus('ev_dispatch');
+		}
+	}]]></code>
+				</method>
+			</methods>
+		</class>
+		<class id="UserRequest" _created_in="itop-request-mgmt" _delta="if_exists">
+			<fields>
+				<field id="dispatch_timeout" xsi:type="AttributeStopWatch" _delta="define">
+					<states>
+						<state id="new"/>
+					</states>
+					<goal>AutoDispatchTicket</goal>
+					<thresholds>
+						<threshold id="100">
+							<actions>
+								<action>
+									<verb>DispatchToTeam</verb>
+									<params/>
+								</action>
+								<action>
+									<verb>ApplyStimulus</verb>
+									<params>
+										<param>ev_dispatch</param>
+									</params>
+								</action>
+							</actions>
+						</threshold>
+					</thresholds>
+				</field>
+			</fields>
+			<methods>
+				<method id="DispatchToTeam" _delta="define">
+					<comment><![CDATA[/**
+	 * Dispatch Ticket to a Team
+	 */]]></comment>
+					<static>false</static>
+					<access>public</access>
+					<type>Custom</type>
+					<code><![CDATA[	public function DispatchToTeam()
+	{
+		$oTeamSet = new DBObjectSet( DBObjectSearch::FromOQL_AllData("SELECT Team AS T
+JOIN DispatchRule AS DR ON DR.team_id = T.id
+JOIN lnkCustomerContractToService AS L1 ON L1.dispatch_id = DR.id
+WHERE L1.service_id = :this->service_id"), [], ['this' => $this], null, 1);
+		$oTeam = $oTeamSet->Fetch();
+
+		// Set Team and dispatch
+		if ($oTeam)
+		{
+			$this->Set('team_id', $oTeam);
+			$this->ApplyStimulus('ev_dispatch');
+		}
+	}]]></code>
+				</method>
+			</methods>
+		</class>
+	</classes>
+	<menus>
+		<menu id="DispatchRule" xsi:type="OQLMenuNode" _delta="define">
+			<rank>9</rank>
+			<parent>ServiceManagement</parent>
+			<oql>SELECT DispatchRule</oql>
+			<do_search>1</do_search>
+		</menu>
+	</menus>
+	<user_rights>
+		<groups>
+			<group id="Service">
+				<classes>
+					<class id="DispatchRule" _delta="define"/>
+				</classes>
+			</group>
+		</groups>
+	</user_rights>
+	<dictionaries>
+		<dictionary id="EN US">
+			<entries>
+				<entry id="Class:DispatchRule" _delta="define">Dispatch rule</entry>
+				<entry id="Class:DispatchRule/Attribute:name" _delta="define">Name</entry>
+				<entry id="Class:DispatchRule/Attribute:org_id" _delta="define">Organization</entry>
+				<entry id="Class:DispatchRule/Attribute:team_id" _delta="define">Team</entry>
+				<entry id="Class:DispatchRule/Attribute:timeout" _delta="define">Timeout</entry>
+				<entry id="Class:Incident/Attribute:dispatch_timeout" _delta="define">Dispatch Timeout</entry>
+				<entry id="Class:lnkCustomerContractToService/Attribute:dispatch_id" _delta="define">Dispatch rule</entry>
+				<entry id="Class:UserRequest/Attribute:dispatch_timeout" _delta="define">Dispatch Timeout</entry>
+				<entry id="Menu:DispatchRule" _delta="define">Dispatch rules</entry>
+				<entry id="Menu:DispatchRule+" _delta="define">Dispatch rules</entry>
+			</entries>
+		</dictionary>
+		<dictionary id="NL NL">
+			<entries>
+				<entry id="Class:DispatchRule" _delta="define">Dispatch regel</entry>
+				<entry id="Class:DispatchRule/Attribute:name" _delta="define">Naam</entry>
+				<entry id="Class:DispatchRule/Attribute:org_id" _delta="define">Organisatie</entry>
+				<entry id="Class:DispatchRule/Attribute:team_id" _delta="define">Team</entry>
+				<entry id="Class:DispatchRule/Attribute:timeout" _delta="define">Time-out</entry>
+				<entry id="Class:Incident/Attribute:dispatch_timeout" _delta="define">Dispatch Time-out</entry>
+				<entry id="Class:lnkCustomerContractToService/Attribute:dispatch_id" _delta="define">Dispatch regel</entry>
+				<entry id="Class:UserRequest/Attribute:dispatch_timeout" _delta="define">Dispatch Time-out</entry>
+				<entry id="Menu:DispatchRule" _delta="define">Dispatch regels</entry>
+				<entry id="Menu:DispatchRule+" _delta="define">Dispatch regels</entry>
+			</entries>
+		</dictionary>
+	</dictionaries>
+</itop_design>
