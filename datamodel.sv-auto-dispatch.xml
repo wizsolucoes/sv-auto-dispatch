@@ -96,13 +96,14 @@
 		</class>
 		<class id="lnkCustomerContractToService" _created_in="itop-service-mgmt" _delta="must_exist">
 			<fields>
+				<field id="provider_id" xsi:type="AttributeExternalField" _delta="define">
+					<extkey_attcode>customercontract_id</extkey_attcode>
+					<target_attcode>provider_id</target_attcode>
+				</field>
 				<field id="dispatch_id" xsi:type="AttributeExternalKey" _delta="define">
 					<sql>dispatch_id</sql>
 					<target_class>DispatchRule</target_class>
-					<filter>SELECT DispatchRule AS DR
-						JOIN Organization AS O ON DR.org_id = O.id
-						JOIN CustomerContract AS CC ON CC.provider_id = O.id
-						WHERE CC.id = :this->customercontract_id</filter>
+					<filter>SELECT DispatchRule WHERE org_id = :this->provider_id</filter>
 					<dependencies>
 						<attribute id="customercontract_id"/>
 					</dependencies>
