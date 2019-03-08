@@ -16,7 +16,7 @@ SetupWebPage::AddModule(
 		//
 		'dependencies' => array(
 			'combodo-dispatch-userrequest/1.1.5||combodo-dispatch-incident/1.1.4',
-			'itop-service-mgmt/2.4.0',
+			'itop-service-mgmt/2.4.0||itop-service-mgmt-provider/2.4.0',
 		),
 		'mandatory' => false,
 		'visible' => true,
