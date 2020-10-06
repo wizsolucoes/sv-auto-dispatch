@@ -281,5 +281,19 @@ WHERE L1.service_id = :this->service_id"), [], ['this' => $this], null, 1);
 				<entry id="Menu:DispatchRule+" _delta="define">Dispatch regels</entry>
 			</entries>
 		</dictionary>
+		<dictionary id="PT BR">
+			<entries>
+				<entry id="Class:DispatchRule" _delta="define">Regra de atribuição</entry>
+				<entry id="Class:DispatchRule/Attribute:name" _delta="define">Nome</entry>
+				<entry id="Class:DispatchRule/Attribute:org_id" _delta="define">Organização</entry>
+				<entry id="Class:DispatchRule/Attribute:team_id" _delta="define">Equipe</entry>
+				<entry id="Class:DispatchRule/Attribute:timeout" _delta="define">Timeout</entry>
+				<entry id="Class:Incident/Attribute:dispatch_timeout" _delta="define">Timeout de Atribuição</entry>
+				<entry id="Class:lnkCustomerContractToService/Attribute:dispatch_id" _delta="define">Regra de atribuição</entry>
+				<entry id="Class:UserRequest/Attribute:dispatch_timeout" _delta="define">Timeout de Atribuição</entry>
+				<entry id="Menu:DispatchRule" _delta="define">Regras de atribuição</entry>
+				<entry id="Menu:DispatchRule+" _delta="define">Regras de atribuição</entry>
+			</entries>
+		</dictionary>
 	</dictionaries>
 </itop_design>
