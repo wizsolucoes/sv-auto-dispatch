@@ -103,7 +103,15 @@
 				<field id="dispatch_id" xsi:type="AttributeExternalKey" _delta="define">
 					<sql>dispatch_id</sql>
 					<target_class>DispatchRule</target_class>
-					<filter>SELECT DispatchRule WHERE (org_id = :this->provider_id) OR (org_id = :this->org_id)</filter>
+					<filter>SELECT DispatchRule WHERE org_id IN (
+						SELECT o FROM CustomerContract AS c 
+						JOIN Organization AS o ON c.provider_id = o.id
+						WHERE c.id = :this->customercontract_id
+						UNION
+						SELECT o FROM CustomerContract AS c 
+						JOIN Organization AS o ON c.org_id = o.id
+						WHERE c.id = :this->customercontract_id
+						)</filter>
 					<dependencies>
 						<attribute id="customercontract_id"/>
 					</dependencies>
