@@ -103,7 +103,7 @@
 				<field id="dispatch_id" xsi:type="AttributeExternalKey" _delta="define">
 					<sql>dispatch_id</sql>
 					<target_class>DispatchRule</target_class>
-					<filter>SELECT DispatchRule WHERE org_id = :this->provider_id</filter>
+					<filter>SELECT DispatchRule WHERE (org_id = :this->provider_id) OR (org_id = :this->org_id)</filter>
 					<dependencies>
 						<attribute id="customercontract_id"/>
 					</dependencies>
